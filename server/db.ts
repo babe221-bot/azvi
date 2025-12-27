@@ -361,7 +361,7 @@ export async function createQualityTest(test: InsertQualityTest) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(qualityTests).values(test);
+  const result = await db.insert(qualityTests).values(test).returning();
   return result;
 }
 
@@ -490,7 +490,7 @@ export async function createEmployee(employee: InsertEmployee) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(employees).values(employee);
+  const result = await db.insert(employees).values(employee).returning();
   return result;
 }
 
@@ -540,7 +540,7 @@ export async function createWorkHour(workHour: InsertWorkHour) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(workHours).values(workHour);
+  const result = await db.insert(workHours).values(workHour).returning();
   return result;
 }
 
@@ -578,7 +578,7 @@ export async function createConcreteBase(base: InsertConcreteBase) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(concreteBases).values(base);
+  const result = await db.insert(concreteBases).values(base).returning();
   return result;
 }
 
@@ -609,7 +609,7 @@ export async function createMachine(machine: InsertMachine) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(machines).values(machine);
+  const result = await db.insert(machines).values(machine).returning();
   return result;
 }
 
@@ -662,7 +662,7 @@ export async function createMachineMaintenance(maintenance: InsertMachineMainten
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(machineMaintenance).values(maintenance);
+  const result = await db.insert(machineMaintenance).values(maintenance).returning();
   return result;
 }
 
@@ -690,7 +690,7 @@ export async function createMachineWorkHour(workHour: InsertMachineWorkHour) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(machineWorkHours).values(workHour);
+  const result = await db.insert(machineWorkHours).values(workHour).returning();
   return result;
 }
 
@@ -718,7 +718,7 @@ export async function createAggregateInput(input: InsertAggregateInput) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(aggregateInputs).values(input);
+  const result = await db.insert(aggregateInputs).values(input).returning();
   return result;
 }
 
@@ -1349,9 +1349,9 @@ export async function createAiConversation(data: { userId: number; title?: strin
     userId: data.userId,
     title: data.title || "New Conversation",
     modelName: data.modelName,
-  });
+  }).returning();
 
-  return result[0].insertId;
+  return result[0].id;
 }
 
 export async function getAiConversations(userId: number) {
@@ -1398,14 +1398,14 @@ export async function createAiMessage(data: {
     thinkingProcess: data.thinkingProcess,
     toolCalls: data.toolCalls,
     metadata: data.metadata,
-  });
+  }).returning();
 
   // Update conversation timestamp
   await db.update(aiConversations)
     .set({ updatedAt: new Date() })
     .where(eq(aiConversations.id, data.conversationId));
 
-  return result[0].insertId;
+  return result[0].id;
 }
 
 export async function getAiMessages(conversationId: number) {

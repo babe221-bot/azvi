@@ -47,7 +47,7 @@ export const appRouter = router({
           role: "user",
         }) as any;
 
-        const userId = result.insertId;
+        const userId = result.id;
         const sessionToken = await sdk.createSessionToken(userId);
         const cookieOptions = getSessionCookieOptions(ctx.req);
 
@@ -71,7 +71,7 @@ export const appRouter = router({
               name: "Developer Admin",
               role: "admin",
             }) as any;
-            user = await db.getUserById(result.insertId);
+            user = result;
           }
 
           if (user) {
