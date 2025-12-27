@@ -25,7 +25,14 @@ export function useAuth(options?: UseAuthOptions) {
     },
   });
 
+  const { logout: logoutFromAuth0, isAuthenticated: isAuth0Authenticated, isLoading: isAuth0Loading } = useAuth0();
+
   const logout = useCallback(async () => {
+    if (isAuth0Authenticated) {
+      logoutFromAuth0({ logoutParams: { returnTo: window.location.origin } });
+      return;
+    }
+
     try {
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
@@ -40,7 +47,7 @@ export function useAuth(options?: UseAuthOptions) {
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }
-  }, [logoutMutation, utils]);
+  }, [logoutMutation, utils, isAuth0Authenticated, logoutFromAuth0]);
 
   const state = useMemo(() => {
     localStorage.setItem(
@@ -49,7 +56,7 @@ export function useAuth(options?: UseAuthOptions) {
     );
     return {
       user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      loading: meQuery.isLoading || logoutMutation.isPending || isAuth0Loading,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
     };
@@ -59,6 +66,7 @@ export function useAuth(options?: UseAuthOptions) {
     meQuery.isLoading,
     logoutMutation.error,
     logoutMutation.isPending,
+    isAuth0Loading,
   ]);
 
   useEffect(() => {
