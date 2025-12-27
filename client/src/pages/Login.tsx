@@ -7,12 +7,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { REGISTER_PATH } from "@/const";
+import { useAuth0 } from "@auth0/auth0-react";
 
 export default function Login() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [, setLocation] = useLocation();
     const utils = trpc.useUtils();
+    const { loginWithRedirect, isLoading } = useAuth0();
 
     const loginMutation = trpc.auth.login.useMutation({
         onSuccess: () => {
@@ -93,11 +95,20 @@ export default function Login() {
                 </CardContent>
                 <CardFooter className="flex flex-col space-y-4 pt-4 border-t border-white/5 mt-4">
                     <Button
+                        variant="default"
+                        type="button"
+                        onClick={() => loginWithRedirect()}
+                        className="w-full h-11 bg-[#eb5424] hover:bg-[#d44a1e] text-white font-semibold transition-all shadow-[0_0_20px_rgba(235,84,36,0.2)]"
+                        disabled={loginMutation.isPending || isLoading}
+                    >
+                        {isLoading ? "Loading..." : "Sign In with Auth0"}
+                    </Button>
+                    <Button
                         variant="outline"
                         type="button"
                         onClick={() => loginMutation.mutate({ username: "developer", password: "4433" })}
                         className="w-full border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-all"
-                        disabled={loginMutation.isPending}
+                        disabled={loginMutation.isPending || isLoading}
                     >
                         Login as Developer
                     </Button>
