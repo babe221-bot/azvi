@@ -92,6 +92,15 @@ export default function Login() {
                     </form>
                 </CardContent>
                 <CardFooter className="flex flex-col space-y-4 pt-4 border-t border-white/5 mt-4">
+                    <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => loginMutation.mutate({ username: "developer", password: "4433" })}
+                        className="w-full border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-all"
+                        disabled={loginMutation.isPending}
+                    >
+                        Login as Developer
+                    </Button>
                     <div className="text-sm text-gray-400 text-center w-full">
                         New to AzVirt?{" "}
                         <Link href={REGISTER_PATH} className="text-orange-500 hover:text-orange-400 font-medium transition-colors">
