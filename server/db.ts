@@ -312,7 +312,7 @@ export async function updateDelivery(id: number, data: Partial<InsertDelivery>) 
 
   // If status is being updated, log it to history
   if (data.status) {
-    await logDeliveryStatus(id, data.status, data.gpsLocation, data.notes || data.driverNotes);
+    await logDeliveryStatus(id, data.status, data.gpsLocation ?? undefined, (data.notes || data.driverNotes) ?? undefined);
   }
 }
 
