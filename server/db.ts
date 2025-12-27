@@ -163,6 +163,14 @@ export async function createUser(user: InsertUser) {
   return result;
 }
 
+export async function updateUser(userId: number, data: Partial<InsertUser>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(users).set(data).where(eq(users.id, userId));
+}
+
+
 // Documents
 export async function createDocument(doc: InsertDocument) {
   const db = await getDb();
