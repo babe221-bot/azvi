@@ -76,6 +76,10 @@ export const materials = mysqlTable("materials", {
   lowStockEmailSent: boolean("lowStockEmailSent").default(false),
   lastEmailSentAt: timestamp("lastEmailSentAt"),
   supplierEmail: varchar("supplierEmail", { length: 255 }),
+  leadTimeDays: int("leadTimeDays").default(7),
+  reorderPoint: int("reorderPoint"), // Correctly changed to integer for consistency
+  optimalOrderQuantity: int("optimalOrderQuantity"),
+  supplierId: int("supplierId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -114,6 +118,21 @@ export const deliveries = mysqlTable("deliveries", {
 
 export type Delivery = typeof deliveries.$inferSelect;
 export type InsertDelivery = typeof deliveries.$inferInsert;
+
+/**
+ * Delivery status history for tracking the timeline of a delivery
+ */
+export const deliveryStatusHistory = mysqlTable("delivery_status_history", {
+  id: int("id").autoincrement().primaryKey(),
+  deliveryId: int("deliveryId").notNull(),
+  status: varchar("status", { length: 50 }).notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  gpsLocation: varchar("gpsLocation", { length: 100 }),
+  notes: text("notes"),
+});
+
+export type DeliveryStatusHistory = typeof deliveryStatusHistory.$inferSelect;
+export type InsertDeliveryStatusHistory = typeof deliveryStatusHistory.$inferInsert;
 
 /**
  * Quality tests table for QC records
@@ -666,3 +685,21 @@ export const triggerExecutionLog = mysqlTable("trigger_execution_log", {
 
 export type TriggerExecutionLog = typeof triggerExecutionLog.$inferSelect;
 export type InsertTriggerExecutionLog = typeof triggerExecutionLog.$inferInsert;
+
+/**
+ * Suppliers table for material procurement management
+ */
+export const suppliers = mysqlTable("suppliers", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  contactPerson: varchar("contactPerson", { length: 255 }),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 50 }),
+  averageLeadTimeDays: int("averageLeadTimeDays").default(7),
+  onTimeDeliveryRate: int("onTimeDeliveryRate").default(100), // Percent 0-100
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = typeof suppliers.$inferInsert;
