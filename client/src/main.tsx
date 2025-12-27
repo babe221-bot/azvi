@@ -38,27 +38,13 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
-const trpcClient = trpc.createClient({
-  links: [
-    httpBatchLink({
-      url: "/api/trpc",
-      transformer: superjson,
-      fetch(input, init) {
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          credentials: "include",
-        });
-      },
-    }),
-  ],
-});
+import { AuthProvider } from "./components/AuthProvider";
+import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
-  <trpc.Provider client={trpcClient} queryClient={queryClient}>
-    <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <App />
-      </LanguageProvider>
-    </QueryClientProvider>
-  </trpc.Provider>
+  <LanguageProvider>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </LanguageProvider>
 );
