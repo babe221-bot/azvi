@@ -3,14 +3,14 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getLoginUrl } from "@/const";
+import { LOGIN_PATH } from "@/const";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import DeliveryTrendsChart from "@/components/DeliveryTrendsChart";
 import MaterialConsumptionChart from "@/components/MaterialConsumptionChart";
 import DashboardFilters from "@/components/DashboardFilters";
-import { 
-  FileText, Package, Truck, FlaskConical, Folder, TrendingUp, 
+import {
+  FileText, Package, Truck, FlaskConical, Folder, TrendingUp,
   AlertCircle, CheckCircle, Clock, Search, Filter, Download, Activity
 } from "lucide-react";
 import { Link } from "wouter";
@@ -34,7 +34,7 @@ export default function Home() {
 
   if (!user) {
     return (
-      <div 
+      <div
         className="min-h-screen flex flex-col items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: 'url(/azvirt-35years-bg.png)' }}
       >
@@ -46,7 +46,7 @@ export default function Home() {
             Sistem za upravljanje dokumentima za izvrsnost u građevinarstvu
           </p>
           <Button asChild size="lg" className="text-lg px-8 py-6 bg-orange-600 hover:bg-orange-700">
-            <a href={getLoginUrl()}>Prijavite se za nastavak</a>
+            <Link href={LOGIN_PATH}>Prijavite se za nastavak</Link>
           </Button>
         </div>
       </div>
@@ -72,8 +72,8 @@ export default function Home() {
                 className="pl-10 bg-card/50 border-primary/20"
               />
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="icon"
               onClick={() => setShowFilters(!showFilters)}
             >
@@ -87,7 +87,7 @@ export default function Home() {
 
         {/* Filters Panel */}
         {showFilters && (
-          <DashboardFilters 
+          <DashboardFilters
             onFilterChange={setFilters}
             onClose={() => setShowFilters(false)}
           />
@@ -146,11 +146,10 @@ export default function Home() {
           </Link>
 
           <Link href="/deliveries">
-            <Card className={`bg-card/90 backdrop-blur transition-all cursor-pointer hover:shadow-lg ${
-              (stats?.todayDeliveries ?? 0) > 0 
-                ? "border-yellow-500/20 hover:border-yellow-500/40" 
+            <Card className={`bg-card/90 backdrop-blur transition-all cursor-pointer hover:shadow-lg ${(stats?.todayDeliveries ?? 0) > 0
+                ? "border-yellow-500/20 hover:border-yellow-500/40"
                 : "border-primary/20 hover:border-primary/40"
-            }`}>
+              }`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Današnje isporuke</CardTitle>
                 <Truck className={`h-4 w-4 ${(stats?.todayDeliveries ?? 0) > 0 ? "text-yellow-500" : "text-primary"}`} />
@@ -163,11 +162,10 @@ export default function Home() {
           </Link>
 
           <Link href="/materials">
-            <Card className={`bg-card/90 backdrop-blur transition-all cursor-pointer hover:shadow-lg ${
-              (stats?.lowStockMaterials ?? 0) > 0 
-                ? "border-red-500/20 hover:border-red-500/40" 
+            <Card className={`bg-card/90 backdrop-blur transition-all cursor-pointer hover:shadow-lg ${(stats?.lowStockMaterials ?? 0) > 0
+                ? "border-red-500/20 hover:border-red-500/40"
                 : "border-primary/20 hover:border-primary/40"
-            }`}>
+              }`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Artikli sa niskim zalihama</CardTitle>
                 <Package className={`h-4 w-4 ${(stats?.lowStockMaterials ?? 0) > 0 ? "text-red-500" : "text-primary"}`} />
