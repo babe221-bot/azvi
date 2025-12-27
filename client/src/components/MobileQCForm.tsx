@@ -385,6 +385,56 @@ export function MobileQCForm({ deliveryId, projectId, onSuccess }: MobileQCFormP
     </Card>
   );
 
+  const renderStep4 = () => (
+    <Card className="border-orange-500/20">
+      <CardHeader>
+        <CardTitle>Korak 4: Potpisi / Step 4: Signatures</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <Label className="mb-2 block">Potpis inspektora / Inspector Signature</Label>
+          <SignatureCanvas
+            onSave={(data) => {
+              setInspectorSig(data);
+              toast.success('Potpis inspektora sačuvan / Inspector signature saved');
+            }}
+            onClear={() => setInspectorSig('')}
+          />
+          {inspectorSig && <div className="mt-2 text-xs text-green-500">✓ Potpisan / Signed</div>}
+        </div>
+
+        <div>
+          <Label className="mb-2 block">Potpis supervizora / Supervisor Signature</Label>
+          <SignatureCanvas
+            onSave={(data) => {
+              setSupervisorSig(data);
+              toast.success('Potpis supervizora sačuvan / Supervisor signature saved');
+            }}
+            onClear={() => setSupervisorSig('')}
+          />
+          {supervisorSig && <div className="mt-2 text-xs text-green-500">✓ Potpisan / Signed</div>}
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setStep(3)}
+            className="flex-1 h-12 text-lg"
+          >
+            ← Nazad / Back
+          </Button>
+          <Button
+            onClick={() => setStep(5)}
+            disabled={!inspectorSig}
+            className="flex-1 h-12 text-lg bg-orange-500 hover:bg-orange-600"
+          >
+            Pregled / Summary →
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   const renderStep5 = () => (
     <Card className="border-orange-500/20">
       <CardHeader>

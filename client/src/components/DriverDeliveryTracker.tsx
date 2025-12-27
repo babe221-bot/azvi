@@ -70,7 +70,7 @@ export function DriverDeliveryTracker({ deliveryId, onComplete }: DriverDelivery
   };
 
   const simulateArrival = () => {
-    if (delivery.status === 'en_route') {
+    if (delivery?.status === 'en_route') {
       handleStatusUpdate('arrived');
       toast.info('Simuliran dolazak na lokaciju / Simulated arrival at location');
     }
