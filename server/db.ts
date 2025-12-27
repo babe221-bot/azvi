@@ -151,7 +151,7 @@ export async function createUser(user: InsertUser) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(users).values(user);
+  const result = await db.insert(users).values(user).returning();
   return result;
 }
 
@@ -160,7 +160,7 @@ export async function createDocument(doc: InsertDocument) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(documents).values(doc);
+  const result = await db.insert(documents).values(doc).returning();
   return result;
 }
 
@@ -218,7 +218,7 @@ export async function createProject(project: InsertProject) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(projects).values(project);
+  const result = await db.insert(projects).values(project).returning();
   return result;
 }
 
@@ -250,7 +250,7 @@ export async function createMaterial(material: InsertMaterial) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(materials).values(material);
+  const result = await db.insert(materials).values(material).returning();
   return result;
 }
 
@@ -281,7 +281,7 @@ export async function createDelivery(delivery: InsertDelivery) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(deliveries).values(delivery);
+  const result = await db.insert(deliveries).values(delivery).returning();
   return result;
 }
 
