@@ -86,7 +86,7 @@ export async function checkAndNotifyOverdueTasks() {
         if (prefs?.smsEnabled) channels.push("sms");
         if (prefs?.inAppEnabled) channels.push("in_app");
 
-        const notificationResult = await createNotification({
+        const [notification] = await createNotification({
           taskId: task.id,
           userId: task.userId,
           type: "overdue_reminder",
@@ -94,9 +94,9 @@ export async function checkAndNotifyOverdueTasks() {
           message,
           channels: JSON.stringify(channels),
           status: "pending",
-        });
+        }) as any;
 
-        const notificationId = (notificationResult as any).insertId || 0;
+        const notificationId = notification.id || 0;
 
         // Send email if enabled
         if (prefs?.emailEnabled && user.email) {
@@ -226,7 +226,7 @@ export async function notifyTaskCompletion(
     if (prefs?.emailEnabled) channels.push("email");
     if (prefs?.inAppEnabled) channels.push("in_app");
 
-    const notificationResult = await createNotification({
+    const [notification] = await createNotification({
       taskId,
       userId,
       type: "completion_confirmation",
@@ -234,9 +234,9 @@ export async function notifyTaskCompletion(
       message,
       channels: JSON.stringify(channels),
       status: "pending",
-    });
+    }) as any;
 
-    const notificationId = (notificationResult as any).insertId || 0;
+    const notificationId = notification.id || 0;
 
     // Send email if enabled
     if (prefs?.emailEnabled && user.email) {

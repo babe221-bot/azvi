@@ -1514,7 +1514,7 @@ export async function assignTask(assignment: InsertTaskAssignment) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.insert(taskAssignments).values(assignment);
+  return db.insert(taskAssignments).values(assignment).returning();
 }
 
 export async function getTaskAssignments(taskId: number) {
@@ -1544,7 +1544,7 @@ export async function recordTaskStatusChange(history: InsertTaskStatusHistory) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.insert(taskStatusHistory).values(history);
+  return db.insert(taskStatusHistory).values(history).returning();
 }
 
 export async function getTaskHistory(taskId: number) {
@@ -1562,7 +1562,7 @@ export async function createNotification(notification: InsertTaskNotification) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(taskNotifications).values(notification);
+  const result = await db.insert(taskNotifications).values(notification).returning();
   return result;
 }
 
@@ -1640,9 +1640,9 @@ export async function getOrCreateNotificationPreferences(userId: number) {
     assignmentNotifications: true,
     statusChangeNotifications: true,
     timezone: 'UTC',
-  });
+  }).returning();
 
-  return result;
+  return result[0];
 }
 
 export async function updateNotificationPreferences(userId: number, preferences: Partial<InsertNotificationPreference>) {
@@ -1671,7 +1671,7 @@ export async function recordNotificationHistory(history: InsertNotificationHisto
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.insert(notificationHistory).values(history);
+  return db.insert(notificationHistory).values(history).returning();
 }
 
 export async function getNotificationHistory(notificationId: number) {
@@ -1754,7 +1754,7 @@ export async function createNotificationTemplate(data: {
     channels: JSON.stringify(data.channels) as any,
     variables: data.variables ? JSON.stringify(data.variables) : null,
     tags: data.tags ? JSON.stringify(data.tags) : null,
-  } as any);
+  } as any).returning();
 }
 
 export async function updateNotificationTemplate(id: number, data: any) {
@@ -1828,7 +1828,7 @@ export async function createNotificationTrigger(data: {
     eventType: data.eventType,
     triggerCondition: JSON.stringify(data.triggerCondition) as any,
     actions: JSON.stringify(data.actions) as any,
-  } as any)
+  } as any).returning();
 }
 
 export async function updateNotificationTrigger(id: number, data: any) {
@@ -1857,7 +1857,7 @@ export async function recordTriggerExecution(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.insert(triggerExecutionLog).values(data);
+  return db.insert(triggerExecutionLog).values(data).returning();
 }
 
 export async function getTriggerExecutionLog(triggerId: number, limit = 100) {
@@ -1874,7 +1874,7 @@ export async function createSupplier(supplier: InsertSupplier) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return await db.insert(suppliers).values(supplier);
+  return await db.insert(suppliers).values(supplier).returning();
 }
 
 export async function getSuppliers() {

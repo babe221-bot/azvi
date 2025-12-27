@@ -53,7 +53,7 @@ describe('AI Data Manipulation Tools', () => {
       hireDate: new Date(),
       status: 'active',
     });
-    testEmployeeId = (empResult[0] as any).insertId;
+    testEmployeeId = (empResult[0] as any).id;
 
     // Create test machine with unique number
     const machineResult = await db.createMachine({
@@ -63,7 +63,7 @@ describe('AI Data Manipulation Tools', () => {
       model: 'MX-2000',
       status: 'operational',
     });
-    testMachineId = (machineResult[0] as any).insertId;
+    testMachineId = (machineResult[0] as any).id;
 
     // Create test project
     const projectResult = await db.createProject({
@@ -73,14 +73,14 @@ describe('AI Data Manipulation Tools', () => {
       status: 'active',
       createdBy: mockUser.id,
     });
-    testProjectId = (projectResult[0] as any).insertId;
+    testProjectId = (projectResult[0] as any).id;
   });
 
   describe('Work Hours Tools', () => {
     it('should log employee work hours', async () => {
       const now = new Date();
       const startTime = new Date(now.getTime() - 8 * 60 * 60 * 1000); // 8 hours ago
-      
+
       const result = await caller.ai.executeTool({
         toolName: 'log_work_hours',
         parameters: {
@@ -103,7 +103,7 @@ describe('AI Data Manipulation Tools', () => {
     it('should calculate overtime correctly', async () => {
       const now = new Date();
       const startTime = new Date(now.getTime() - 10 * 60 * 60 * 1000); // 10 hours ago
-      
+
       const result = await caller.ai.executeTool({
         toolName: 'log_work_hours',
         parameters: {
@@ -138,7 +138,7 @@ describe('AI Data Manipulation Tools', () => {
     it('should filter work hours by date range', async () => {
       const today = new Date();
       const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-      
+
       const result = await caller.ai.executeTool({
         toolName: 'get_work_hours_summary',
         parameters: {
@@ -157,7 +157,7 @@ describe('AI Data Manipulation Tools', () => {
     it('should log machine work hours', async () => {
       const now = new Date();
       const startTime = new Date(now.getTime() - 5 * 60 * 60 * 1000); // 5 hours ago
-      
+
       const result = await caller.ai.executeTool({
         toolName: 'log_machine_hours',
         parameters: {
@@ -179,7 +179,7 @@ describe('AI Data Manipulation Tools', () => {
 
     it('should log machine hours without end time', async () => {
       const now = new Date();
-      
+
       const result = await caller.ai.executeTool({
         toolName: 'log_machine_hours',
         parameters: {
@@ -295,7 +295,7 @@ describe('AI Data Manipulation Tools', () => {
         category: 'other',
         uploadedBy: mockUser.id,
       });
-      testDocumentId = (docResult[0] as any).insertId;
+      testDocumentId = (docResult[0] as any).id;
     });
 
     it('should update document metadata', async () => {
@@ -340,7 +340,7 @@ describe('AI Data Manipulation Tools', () => {
         category: 'other',
         uploadedBy: mockUser.id,
       });
-      const docId = (deleteDocResult[0] as any).insertId;
+      const docId = (deleteDocResult[0] as any).id;
 
       const result = await caller.ai.executeTool({
         toolName: 'delete_document',

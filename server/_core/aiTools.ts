@@ -45,7 +45,7 @@ const searchMaterialsTool: Tool = {
   execute: async (params, userId) => {
     const db = await getDb();
     if (!db) return { error: 'Database not available' };
-    
+
     let query = db.select().from(materials);
 
     if (params.query) {
@@ -100,7 +100,7 @@ const getDeliveryStatusTool: Tool = {
   execute: async (params, userId) => {
     const db = await getDb();
     if (!db) return { error: 'Database not available' };
-    
+
     const conditions = [];
 
     if (params.deliveryId) {
@@ -164,7 +164,7 @@ const searchDocumentsTool: Tool = {
   execute: async (params, userId) => {
     const db = await getDb();
     if (!db) return { error: 'Database not available' };
-    
+
     const conditions = [];
 
     if (params.query) {
@@ -230,7 +230,7 @@ const getQualityTestsTool: Tool = {
   execute: async (params, userId) => {
     const db = await getDb();
     if (!db) return { error: 'Database not available' };
-    
+
     const conditions = [];
 
     if (params.status) {
@@ -284,7 +284,7 @@ const generateForecastTool: Tool = {
   execute: async (params, userId) => {
     const db = await getDb();
     if (!db) return { error: 'Database not available' };
-    
+
     let query = db
       .select()
       .from(forecastPredictions)
@@ -305,8 +305,8 @@ const generateForecastTool: Tool = {
       predictedRunoutDate: f.predictedRunoutDate,
       recommendedOrderQty: f.recommendedOrderQty,
       confidence: f.confidence,
-      status: f.daysUntilStockout && f.daysUntilStockout < 7 ? 'critical' : 
-              f.daysUntilStockout && f.daysUntilStockout < 14 ? 'warning' : 'ok',
+      status: f.daysUntilStockout && f.daysUntilStockout < 7 ? 'critical' :
+        f.daysUntilStockout && f.daysUntilStockout < 14 ? 'warning' : 'ok',
     }));
   },
 };
@@ -339,7 +339,7 @@ const calculateStatsTool: Tool = {
   execute: async (params, userId) => {
     const db = await getDb();
     if (!db) return { error: 'Database not available' };
-    
+
     const { metric, startDate, endDate } = params;
 
     const dateConditions = [];
@@ -469,11 +469,11 @@ const logWorkHoursTool: Tool = {
       workType: workType || 'regular',
       notes: notes || null,
       status: 'pending',
-    });
+    }).returning();
 
     return {
       success: true,
-      workHourId: result.insertId,
+      workHourId: result.id,
       hoursWorked,
       overtimeHours,
       message: 'Work hours logged successfully',
@@ -623,11 +623,11 @@ const logMachineHoursTool: Tool = {
       operatorId: operatorId || null,
       operatorName: operatorName || null,
       notes: notes || null,
-    });
+    }).returning();
 
     return {
       success: true,
-      machineWorkHourId: result.insertId,
+      machineWorkHourId: result.id,
       hoursWorked,
       message: 'Machine hours logged successfully',
     };
@@ -782,11 +782,11 @@ const createMaterialTool: Tool = {
       criticalThreshold: minStock ? Math.floor(minStock * 0.5) : 0,
       supplier: supplier || null,
       unitPrice: unitPrice || null,
-    });
+    }).returning();
 
     return {
       success: true,
-      materialId: result.insertId,
+      materialId: result.id,
       message: `Material "${name}" created successfully`,
     };
   },
@@ -934,7 +934,7 @@ export async function executeTool(
   userId: number
 ): Promise<any> {
   const tool = AI_TOOLS.find(t => t.name === toolName);
-  
+
   if (!tool) {
     throw new Error(`Tool not found: ${toolName}`);
   }
