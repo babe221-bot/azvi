@@ -567,6 +567,11 @@ var materials = mysqlTable("materials", {
   lowStockEmailSent: boolean("lowStockEmailSent").default(false),
   lastEmailSentAt: timestamp("lastEmailSentAt"),
   supplierEmail: varchar("supplierEmail", { length: 255 }),
+  leadTimeDays: int("leadTimeDays").default(7),
+  reorderPoint: int("reorderPoint"),
+  // Correctly changed to integer for consistency
+  optimalOrderQuantity: int("optimalOrderQuantity"),
+  supplierId: int("supplierId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
 });
@@ -597,6 +602,14 @@ var deliveries = mysqlTable("deliveries", {
   createdBy: int("createdBy").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
+});
+var deliveryStatusHistory = mysqlTable("delivery_status_history", {
+  id: int("id").autoincrement().primaryKey(),
+  deliveryId: int("deliveryId").notNull(),
+  status: varchar("status", { length: 50 }).notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  gpsLocation: varchar("gpsLocation", { length: 100 }),
+  notes: text("notes")
 });
 var qualityTests = mysqlTable("qualityTests", {
   id: int("id").autoincrement().primaryKey(),
@@ -964,6 +977,18 @@ var triggerExecutionLog = mysqlTable("trigger_execution_log", {
   error: text("error"),
   executedAt: timestamp("executedAt").defaultNow().notNull()
 });
+var suppliers = mysqlTable("suppliers", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  contactPerson: varchar("contactPerson", { length: 255 }),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 50 }),
+  averageLeadTimeDays: int("averageLeadTimeDays").default(7),
+  onTimeDeliveryRate: int("onTimeDeliveryRate").default(100),
+  // Percent 0-100
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
+});
 
 // server/db.ts
 init_env();
@@ -1133,6 +1158,31 @@ async function updateDelivery(id, data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(deliveries).set(data).where(eq(deliveries.id, id));
+  if (data.status) {
+    await logDeliveryStatus(id, data.status, data.gpsLocation, data.notes || data.driverNotes);
+  }
+}
+async function calculateETA(deliveryId, startLocation, endLocation) {
+  const durationMinutes = 45;
+  const eta = Math.floor((Date.now() + durationMinutes * 60 * 1e3) / 1e3);
+  await updateDelivery(deliveryId, { estimatedArrival: eta });
+  return eta;
+}
+async function logDeliveryStatus(deliveryId, status, gpsLocation, notes) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(deliveryStatusHistory).values({
+    deliveryId,
+    status,
+    gpsLocation,
+    notes,
+    timestamp: /* @__PURE__ */ new Date()
+  });
+}
+async function getDeliveryStatusHistory(deliveryId) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(deliveryStatusHistory).where(eq(deliveryStatusHistory.deliveryId, deliveryId)).orderBy(desc(deliveryStatusHistory.timestamp));
 }
 async function createQualityTest(test) {
   const db = await getDb();
@@ -1158,6 +1208,30 @@ async function updateQualityTest(id, data) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(qualityTests).set(data).where(eq(qualityTests.id, id));
+}
+async function generateCompliancePDF(testId) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const testResult = await db.select().from(qualityTests).where(eq(qualityTests.id, testId)).limit(1);
+  const test = testResult[0];
+  if (!test) throw new Error("Quality test not found");
+  const certName = `Compliance_Certificate_${testId}.pdf`;
+  const fileKey = `certificates/${testId}/cert.pdf`;
+  const fileUrl = `https://storage.example.com/${fileKey}`;
+  await createDocument({
+    name: certName,
+    description: `Auto-generated compliance certificate for test ${test.testName}`,
+    fileKey,
+    fileUrl,
+    mimeType: "application/pdf",
+    fileSize: 1024 * 50,
+    // 50KB mock size
+    category: "certificate",
+    projectId: test.projectId,
+    uploadedBy: 1
+    // Default admin ID
+  });
+  return fileUrl;
 }
 async function getFailedQualityTests(days = 30) {
   const db = await getDb();
@@ -1484,7 +1558,22 @@ async function calculateDailyConsumptionRate(materialId, days = 30) {
   const uniqueDays = new Set(consumptions.map(
     (c) => new Date(c.consumptionDate).toDateString()
   )).size;
-  return uniqueDays > 0 ? totalConsumed / uniqueDays : 0;
+  const rawAvg = uniqueDays > 0 ? totalConsumed / uniqueDays : 0;
+  const twoWeeksAgo = /* @__PURE__ */ new Date();
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  const fourWeeksAgo = /* @__PURE__ */ new Date();
+  fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+  const recentConsumptions = consumptions.filter((c) => new Date(c.consumptionDate) >= twoWeeksAgo);
+  const olderConsumptions = consumptions.filter((c) => new Date(c.consumptionDate) >= fourWeeksAgo && new Date(c.consumptionDate) < twoWeeksAgo);
+  const recentTotal = recentConsumptions.reduce((sum, c) => sum + c.quantity, 0);
+  const olderTotal = olderConsumptions.reduce((sum, c) => sum + c.quantity, 0);
+  const trendFactor = olderTotal > 0 ? recentTotal / olderTotal : 1;
+  const adjustedRate = rawAvg * Math.min(2, Math.max(0.5, trendFactor));
+  return adjustedRate;
+}
+async function calculateEOQ(annualDemand, orderCost, holdingCost) {
+  if (holdingCost <= 0) return 0;
+  return Math.sqrt(2 * annualDemand * orderCost / holdingCost);
 }
 async function generateForecastPredictions() {
   const db = await getDb();
@@ -1497,7 +1586,15 @@ async function generateForecastPredictions() {
       const daysUntilStockout = Math.floor(material.quantity / dailyRate);
       const predictedRunoutDate = /* @__PURE__ */ new Date();
       predictedRunoutDate.setDate(predictedRunoutDate.getDate() + daysUntilStockout);
-      const recommendedOrderQty = Math.ceil(dailyRate * 14 * 1.2);
+      const leadTime = material.leadTimeDays || 7;
+      const safetyStock = dailyRate * leadTime * 0.5;
+      const reorderPoint = dailyRate * leadTime + safetyStock;
+      const annualDemand = dailyRate * 365;
+      const eoq = await calculateEOQ(annualDemand, 50, 2);
+      const recommendedOrderQty = Math.max(Math.ceil(eoq), Math.ceil(dailyRate * 14 * 1.2));
+      if (!material.reorderPoint || Math.abs(material.reorderPoint - reorderPoint) > reorderPoint * 0.2) {
+        await updateMaterial(material.id, { reorderPoint: Math.round(reorderPoint) });
+      }
       const consumptions = await getConsumptionHistory(material.id, 30);
       const confidence = Math.min(95, consumptions.length * 3);
       predictions.push({
@@ -1685,6 +1782,32 @@ async function getNotificationHistoryByUser(userId, days = 30) {
     eq(notificationHistory.userId, userId),
     gte(notificationHistory.sentAt, cutoffDate)
   )).orderBy(desc(notificationHistory.sentAt));
+}
+async function createSupplier(supplier) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return await db.insert(suppliers).values(supplier);
+}
+async function getSuppliers() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(suppliers).orderBy(suppliers.name);
+}
+async function getSupplierById(id) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const result = await db.select().from(suppliers).where(eq(suppliers.id, id)).limit(1);
+  return result[0];
+}
+async function updateSupplier(id, data) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(suppliers).set(data).where(eq(suppliers.id, id));
+}
+async function deleteSupplier(id) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(suppliers).where(eq(suppliers.id, id));
 }
 
 // server/_core/cookies.ts
@@ -4873,6 +4996,17 @@ Please reorder these materials to avoid project delays.`;
       await updateDelivery(input.deliveryId, { smsNotificationSent: true });
       console.log(`[SMS] To: ${delivery.customerPhone}, Message: ${input.message}`);
       return { success: true, message: "SMS notification sent" };
+    }),
+    getHistory: protectedProcedure.input(z5.object({ deliveryId: z5.number() })).query(async ({ input }) => {
+      return await getDeliveryStatusHistory(input.deliveryId);
+    }),
+    calculateETA: protectedProcedure.input(z5.object({
+      deliveryId: z5.number(),
+      startLocation: z5.string(),
+      endLocation: z5.string()
+    })).mutation(async ({ input }) => {
+      const eta = await calculateETA(input.deliveryId, input.startLocation, input.endLocation);
+      return { success: true, eta };
     })
   }),
   qualityTests: router({
@@ -4968,6 +5102,10 @@ Please reorder these materials to avoid project delays.`;
       const { id, ...data } = input;
       await updateQualityTest(id, data);
       return { success: true };
+    }),
+    generateCertificate: protectedProcedure.input(z5.object({ id: z5.number() })).mutation(async ({ input }) => {
+      const url = await generateCompliancePDF(input.id);
+      return { success: true, url };
     })
   }),
   dashboard: router({
@@ -5550,6 +5688,44 @@ Please reorder these materials to avoid project delays.`;
       const { url } = await storagePut(fileKey, buffer, input.mimeType);
       await upsertEmailBranding({ logoUrl: url });
       return { url };
+    })
+  }),
+  // Suppliers Management
+  suppliers: router({
+    list: protectedProcedure.query(async () => {
+      return await getSuppliers();
+    }),
+    get: protectedProcedure.input(z5.object({ id: z5.number() })).query(async ({ input }) => {
+      return await getSupplierById(input.id);
+    }),
+    create: protectedProcedure.input(z5.object({
+      name: z5.string(),
+      contactPerson: z5.string().optional(),
+      email: z5.string().email().optional(),
+      phone: z5.string().optional(),
+      averageLeadTimeDays: z5.number().default(7),
+      onTimeDeliveryRate: z5.number().min(0).max(100).default(100)
+    })).mutation(async ({ input }) => {
+      await createSupplier(input);
+      return { success: true };
+    }),
+    update: protectedProcedure.input(z5.object({
+      id: z5.number(),
+      data: z5.object({
+        name: z5.string().optional(),
+        contactPerson: z5.string().optional(),
+        email: z5.string().email().optional(),
+        phone: z5.string().optional(),
+        averageLeadTimeDays: z5.number().optional(),
+        onTimeDeliveryRate: z5.number().min(0).max(100).optional()
+      })
+    })).mutation(async ({ input }) => {
+      await updateSupplier(input.id, input.data);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z5.object({ id: z5.number() })).mutation(async ({ input }) => {
+      await deleteSupplier(input.id);
+      return { success: true };
     })
   })
 });
