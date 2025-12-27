@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!domain || !clientId) {
         console.warn("Auth0 domain or clientId missing. Auth0 will not work properly.");
-        return <>{children}</>;
+        return <FallbackTrpcProvider>{children}</FallbackTrpcProvider>;
     }
 
     return (
@@ -71,5 +71,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         >
             <TrpcProvider>{children}</TrpcProvider>
         </Auth0Provider>
+    );
+}
+
+function FallbackTrpcProvider({ children }: { children: React.ReactNode }) {
+    const trpcClient = useMemo(() => {
+        return trpc.createClient({
+            links: [
+                httpBatchLink({
+                    url: "/api/trpc",
+                    transformer: superjson,
+                    fetch(input, init) {
+                        return globalThis.fetch(input, {
+                            ...(init ?? {}),
+                            credentials: "include",
+                        });
+                    },
+                }),
+            ],
+        });
+    }, []);
+
+    return (
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+            <QueryClientProvider client={queryClient}>
+                {children}
+            </QueryClientProvider>
+        </trpc.Provider>
     );
 }
