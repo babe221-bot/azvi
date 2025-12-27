@@ -1,5 +1,6 @@
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { TRPCClientError } from "@trpc/client";
+import { QueryClient } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { LOGIN_PATH } from "./const";
@@ -19,7 +20,7 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   window.location.href = LOGIN_PATH;
 };
 
-queryClient.getQueryCache().subscribe(event => {
+queryClient.getQueryCache().subscribe((event: any) => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
@@ -27,7 +28,7 @@ queryClient.getQueryCache().subscribe(event => {
   }
 });
 
-queryClient.getMutationCache().subscribe(event => {
+queryClient.getMutationCache().subscribe((event: any) => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
