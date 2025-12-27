@@ -340,19 +340,20 @@ export function MobileQCForm({ deliveryId, projectId, onSuccess }: MobileQCFormP
           </Button>
           {photos.length > 0 && (
             <div className="grid grid-cols-3 gap-2 mt-4">
-              <div key={idx} className="relative group">
-                <img
-                  src={photo}
-                  alt={`Photo ${idx + 1}`}
-                  className="w-full h-24 object-cover rounded border"
-                />
-                <button
-                  onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
-                  className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
+              {photos.map((photo, idx) => (
+                <div key={idx} className="relative group">
+                  <img
+                    src={photo}
+                    alt={`Photo ${idx + 1}`}
+                    className="w-full h-24 object-cover rounded border"
+                  />
+                  <button
+                    onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
+                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               ))}
             </div>
           )}
