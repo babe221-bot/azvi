@@ -284,6 +284,16 @@ export async function updateDelivery(id: number, data: Partial<InsertDelivery>) 
   }
 }
 
+export async function calculateETA(deliveryId: number, startLocation: string, endLocation: string) {
+  // In a real application, we would use the Google Maps Distance Matrix API
+  // For this prototype, we'll simulate it with a fixed duration based on a mock distance
+  const durationMinutes = 45; // Simulated 45 mins
+  const eta = Math.floor((Date.now() + durationMinutes * 60 * 1000) / 1000);
+
+  await updateDelivery(deliveryId, { estimatedArrival: eta });
+  return eta;
+}
+
 export async function logDeliveryStatus(deliveryId: number, status: string, gpsLocation?: string, notes?: string) {
   const db = await getDb();
   if (!db) return;
@@ -347,6 +357,35 @@ export async function updateQualityTest(id: number, data: Partial<InsertQualityT
   if (!db) throw new Error("Database not available");
 
   await db.update(qualityTests).set(data).where(eq(qualityTests.id, id));
+}
+
+export async function generateCompliancePDF(testId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const testResult = await db.select().from(qualityTests).where(eq(qualityTests.id, testId)).limit(1);
+  const test = testResult[0];
+
+  if (!test) throw new Error("Quality test not found");
+
+  // Simulate PDF generation by creating a document record
+  const certName = `Compliance_Certificate_${testId}.pdf`;
+  const fileKey = `certificates/${testId}/cert.pdf`;
+  const fileUrl = `https://storage.example.com/${fileKey}`; // Mock URL
+
+  await createDocument({
+    name: certName,
+    description: `Auto-generated compliance certificate for test ${test.testName}`,
+    fileKey,
+    fileUrl,
+    mimeType: "application/pdf",
+    fileSize: 1024 * 50, // 50KB mock size
+    category: "certificate",
+    projectId: test.projectId,
+    uploadedBy: 1, // Default admin ID
+  });
+
+  return fileUrl;
 }
 
 export async function getFailedQualityTests(days: number = 30) {
@@ -900,9 +939,6 @@ export async function generateForecastPredictions() {
       if (!material.reorderPoint || Math.abs(material.reorderPoint - reorderPoint) > reorderPoint * 0.2) {
         await updateMaterial(material.id, { reorderPoint: Math.round(reorderPoint) });
       }
-
-      // Calculate recommended order quantity (2 weeks supply + buffer)
-      const recommendedOrderQty = Math.ceil(dailyRate * 14 * 1.2);
 
       // Simple confidence based on data availability
       const consumptions = await getConsumptionHistory(material.id, 30);

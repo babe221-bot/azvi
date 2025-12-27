@@ -12,14 +12,14 @@ import { toast } from "sonner";
 
 export default function ForecastingDashboard() {
   const [selectedMaterial, setSelectedMaterial] = useState<number | null>(null);
-  
+
   const { data: forecasts, isLoading: forecastsLoading, refetch: refetchForecasts } = trpc.materials.getForecasts.useQuery();
   const { data: materials } = trpc.materials.list.useQuery();
   const { data: consumptionHistory } = trpc.materials.getConsumptionHistory.useQuery({
     materialId: selectedMaterial || undefined,
     days: 30,
   });
-  
+
   const generateForecasts = trpc.materials.generateForecasts.useMutation({
     onSuccess: () => {
       toast.success("Forecasts updated successfully");
@@ -41,7 +41,7 @@ export default function ForecastingDashboard() {
 
   // Critical materials (less than 7 days until stockout)
   const criticalMaterials = forecasts?.filter(f => (f.daysUntilStockout || 999) < 7) || [];
-  
+
   // Warning materials (7-14 days until stockout)
   const warningMaterials = forecasts?.filter(f => {
     const days = f.daysUntilStockout || 999;
@@ -57,7 +57,7 @@ export default function ForecastingDashboard() {
             <h1 className="text-3xl font-bold">Inventory Forecasting</h1>
             <p className="text-muted-foreground">AI-powered stock predictions and reorder recommendations</p>
           </div>
-          <Button 
+          <Button
             onClick={() => generateForecasts.mutate()}
             disabled={generateForecasts.isPending}
           >
@@ -119,7 +119,7 @@ export default function ForecastingDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {forecasts && forecasts.length > 0 
+                {forecasts && forecasts.length > 0
                   ? Math.round(forecasts.reduce((sum, f) => sum + (f.confidence || 0), 0) / forecasts.length)
                   : 0}%
               </div>
@@ -133,6 +133,7 @@ export default function ForecastingDashboard() {
           <TabsList>
             <TabsTrigger value="forecasts">Forecasts & Alerts</TabsTrigger>
             <TabsTrigger value="consumption">Consumption Trends</TabsTrigger>
+            <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           </TabsList>
 
           <TabsContent value="forecasts" className="space-y-4">
@@ -149,129 +150,182 @@ export default function ForecastingDashboard() {
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-3">Material</th>
-                          <th className="text-right p-3">Current Stock</th>
-                          <th className="text-right p-3">Daily Usage</th>
-                          <th className="text-right p-3">Days Until Stockout</th>
-                          <th className="text-right p-3">Recommended Order</th>
-                          <th className="text-center p-3">Confidence</th>
-                          <th className="text-center p-3">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {forecasts.map((forecast) => {
-                          const material = materials?.find(m => m.id === forecast.materialId);
-                          const daysLeft = forecast.daysUntilStockout || 999;
-                          const status = daysLeft < 7 ? 'critical' : daysLeft < 14 ? 'warning' : 'ok';
-                          
-                          return (
-                            <tr key={forecast.id} className="border-b hover:bg-muted/50">
-                              <td className="p-3 font-medium">{forecast.materialName}</td>
-                              <td className="text-right p-3">{forecast.currentStock} {material?.unit}</td>
-                              <td className="text-right p-3">{forecast.dailyConsumptionRate} {material?.unit}/day</td>
-                              <td className="text-right p-3">
-                                <span className={
-                                  status === 'critical' ? 'text-destructive font-bold' :
+                        <th className="text-left p-3">Material</th>
+                        <th className="text-right p-3">Current Stock</th>
+                        <th className="text-right p-3">Reorder Point</th>
+                        <th className="text-right p-3">Daily Usage</th>
+                        <th className="text-right p-3">Days Until Stockout</th>
+                        <th className="text-right p-3">Recommended Order (EOQ)</th>
+                        <th className="text-center p-3">Confidence</th>
+                        <th className="text-center p-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {forecasts.map((forecast) => {
+                        const material = materials?.find(m => m.id === forecast.materialId);
+                        const daysLeft = forecast.daysUntilStockout || 999;
+                        const status = daysLeft < 7 ? 'critical' : daysLeft < 14 ? 'warning' : 'ok';
+
+                        return (
+                          <tr key={forecast.id} className="border-b hover:bg-muted/50">
+                            <td className="text-right p-3 font-medium">{forecast.materialName}</td>
+                            <td className="text-right p-3">{forecast.currentStock} {material?.unit}</td>
+                            <td className="text-right p-3 text-orange-400 font-semibold">{material?.reorderPoint || 'N/A'} {material?.unit}</td>
+                            <td className="text-right p-3">{forecast.dailyConsumptionRate} {material?.unit}/day</td>
+                            <td className="text-right p-3">
+                              <span className={
+                                status === 'critical' ? 'text-destructive font-bold' :
                                   status === 'warning' ? 'text-orange-500 font-semibold' :
-                                  'text-green-600'
-                                }>
-                                  {daysLeft} days
-                                </span>
-                              </td>
-                              <td className="text-right p-3 font-semibold">{forecast.recommendedOrderQty} {material?.unit}</td>
-                              <td className="text-center p-3">
-                                <Badge variant="outline">{forecast.confidence}%</Badge>
-                              </td>
-                              <td className="text-center p-3">
-                                <Badge variant={
-                                  status === 'critical' ? 'destructive' :
+                                    'text-green-600'
+                              }>
+                                {daysLeft} days
+                              </span>
+                            </td>
+                            <td className="text-right p-3 font-semibold">{forecast.recommendedOrderQty} {material?.unit}</td>
+                            <td className="text-center p-3">
+                              <Badge variant="outline">{forecast.confidence}%</Badge>
+                            </td>
+                            <td className="text-center p-3">
+                              <Badge variant={
+                                status === 'critical' ? 'destructive' :
                                   status === 'warning' ? 'default' :
-                                  'secondary'
-                                }>
-                                  {status === 'critical' ? '🔴 Critical' :
-                                   status === 'warning' ? '🟡 Warning' :
-                                   '🟢 OK'}
-                                </Badge>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                    'secondary'
+                              }>
+                                {status === 'critical' ? '🔴 Critical' :
+                                  status === 'warning' ? '🟡 Warning' :
+                                    '🟢 OK'}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                   </div>
+              ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No forecast data available. Click "Update Forecasts" to generate predictions.</p>
+              </div>
+                )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="consumption" className="space-y-4">
+          {/* Material Selector */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Material</CardTitle>
+              <CardDescription>View consumption trends for specific materials</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {materials?.map(material => (
+                  <Button
+                    key={material.id}
+                    variant={selectedMaterial === material.id ? "default" : "outline"}
+                    onClick={() => setSelectedMaterial(material.id)}
+                    className="justify-start"
+                  >
+                    {material.name}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Consumption Chart */}
+          {selectedMaterial && (
+            <Card>
+              <CardHeader>
+                <CardTitle>30-Day Consumption Trend</CardTitle>
+                <CardDescription>
+                  {materials?.find(m => m.id === selectedMaterial)?.name}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {consumptionChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={consumptionChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="quantity"
+                        stroke="#f97316"
+                        strokeWidth={2}
+                        name="Quantity Used"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No forecast data available. Click "Update Forecasts" to generate predictions.</p>
+                    <TrendingDown className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No consumption data available for the selected material.</p>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
+        </TabsContent>
 
-          <TabsContent value="consumption" className="space-y-4">
-            {/* Material Selector */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Select Material</CardTitle>
-                <CardDescription>View consumption trends for specific materials</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {materials?.map(material => (
-                    <Button
-                      key={material.id}
-                      variant={selectedMaterial === material.id ? "default" : "outline"}
-                      onClick={() => setSelectedMaterial(material.id)}
-                      className="justify-start"
-                    >
-                      {material.name}
-                    </Button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Consumption Chart */}
-            {selectedMaterial && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>30-Day Consumption Trend</CardTitle>
-                  <CardDescription>
-                    {materials?.find(m => m.id === selectedMaterial)?.name}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {consumptionChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={consumptionChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="quantity" 
-                          stroke="#f97316" 
-                          strokeWidth={2}
-                          name="Quantity Used"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <TrendingDown className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No consumption data available for the selected material.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </DashboardLayout>
+        <TabsContent value="suppliers" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Suppliers Management</CardTitle>
+                <CardDescription>Manage your material vendors and performance</CardDescription>
+              </div>
+              <Button variant="outline" size="sm">
+                Add Supplier
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-3">Name</th>
+                      <th className="text-left p-3">Contact</th>
+                      <th className="text-left p-3">Email</th>
+                      <th className="text-right p-3">Lead Time (Days)</th>
+                      <th className="text-center p-3">On-Time Rate</th>
+                      <th className="text-center p-3">Performance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b hover:bg-muted/50">
+                      <td className="p-3 font-medium">Lafarge Holcim</td>
+                      <td className="p-3">John Smith</td>
+                      <td className="p-3">sales@lafarge.com</td>
+                      <td className="text-right p-3">3 days</td>
+                      <td className="text-center p-3">98%</td>
+                      <td className="text-center p-3">
+                        <Badge className="bg-green-500">Gold</Badge>
+                      </td>
+                    </tr>
+                    <tr className="border-b hover:bg-muted/50">
+                      <td className="p-3 font-medium">Baku Cement</td>
+                      <td className="p-3">Ali Aliyev</td>
+                      <td className="p-3">contact@baku-cement.az</td>
+                      <td className="text-right p-3">5 days</td>
+                      <td className="text-center p-3">92%</td>
+                      <td className="text-center p-3">
+                        <Badge className="bg-blue-500">Silver</Badge>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+    </DashboardLayout >
   );
 }

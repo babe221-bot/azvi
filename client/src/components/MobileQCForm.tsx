@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SignatureCanvas } from './SignatureCanvas';
-import { Camera, MapPin, Upload, Wifi, WifiOff, Check } from 'lucide-react';
+import { Camera, MapPin, Upload, Wifi, WifiOff, Check, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -20,6 +21,7 @@ interface MobileQCFormProps {
 export function MobileQCForm({ deliveryId, projectId, onSuccess }: MobileQCFormProps) {
   const { t } = useLanguage();
   const [step, setStep] = useState(1);
+  const totalSteps = 5;
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [photos, setPhotos] = useState<string[]>([]);
   const [inspectorSig, setInspectorSig] = useState<string>('');
@@ -338,13 +340,19 @@ export function MobileQCForm({ deliveryId, projectId, onSuccess }: MobileQCFormP
           </Button>
           {photos.length > 0 && (
             <div className="grid grid-cols-3 gap-2 mt-4">
-              {photos.map((photo, idx) => (
+              <div key={idx} className="relative group">
                 <img
-                  key={idx}
                   src={photo}
                   alt={`Photo ${idx + 1}`}
                   className="w-full h-24 object-cover rounded border"
                 />
+                <button
+                  onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
+                  className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
               ))}
             </div>
           )}
@@ -376,51 +384,61 @@ export function MobileQCForm({ deliveryId, projectId, onSuccess }: MobileQCFormP
     </Card>
   );
 
-  const renderStep4 = () => (
+  const renderStep5 = () => (
     <Card className="border-orange-500/20">
       <CardHeader>
-        <CardTitle>Korak 4: Potpisi / Step 4: Signatures</CardTitle>
+        <CardTitle>Korak 5: Pregled / Step 5: Summary</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <Label>Potpis inspektora / Inspector Signature *</Label>
-          <SignatureCanvas
-            onSave={(sig) => setInspectorSig(sig)}
-            width={window.innerWidth > 500 ? 400 : window.innerWidth - 80}
-            height={150}
-          />
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="text-muted-foreground">Test:</div>
+          <div className="text-white font-medium">{formData.testName}</div>
+          <div className="text-muted-foreground">Tip / Type:</div>
+          <div className="text-white font-medium uppercase">{formData.testType}</div>
+          <div className="text-muted-foreground">Rezultat / Result:</div>
+          <div className="text-white font-bold">{formData.result} {formData.unit}</div>
+          <div className="text-muted-foreground">Status:</div>
+          <div>
+            <Badge variant={formData.status === 'pass' ? 'default' : 'destructive'} className={formData.status === 'pass' ? 'bg-green-600' : ''}>
+              {formData.status.toUpperCase()}
+            </Badge>
+          </div>
+          <div className="text-muted-foreground">Standard:</div>
+          <div className="text-white font-medium">{formData.complianceStandard}</div>
         </div>
 
-        <div>
-          <Label>Potpis supervizora / Supervisor Signature</Label>
-          <SignatureCanvas
-            onSave={(sig) => setSupervisorSig(sig)}
-            width={window.innerWidth > 500 ? 400 : window.innerWidth - 80}
-            height={150}
-          />
+        <div className="border-t border-white/10 pt-4">
+          <Label className="text-muted-foreground mb-2 block">Potpisi / Signatures:</Label>
+          <div className="grid grid-cols-2 gap-4">
+            {inspectorSig && (
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground">Inspector</p>
+                <img src={inspectorSig} alt="Inspector" className="h-10 bg-white/10 rounded" />
+              </div>
+            )}
+            {supervisorSig && (
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground">Supervisor</p>
+                <img src={supervisorSig} alt="Supervisor" className="h-10 bg-white/10 rounded" />
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => setStep(3)}
+            onClick={() => setStep(4)}
             className="flex-1 h-12 text-lg"
           >
             ← Nazad / Back
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!inspectorSig || createTest.isPending}
-            className="flex-1 h-12 text-lg bg-orange-500 hover:bg-orange-600"
+            disabled={createTest.isPending}
+            className="flex-1 h-12 text-lg bg-orange-500 hover:bg-orange-600 font-bold"
           >
-            {createTest.isPending ? (
-              'Čuvanje... / Saving...'
-            ) : (
-              <>
-                <Check className="w-5 h-5 mr-2" />
-                Sačuvaj test / Save Test
-              </>
-            )}
+            {createTest.isPending ? 'Slanje... / Sending...' : 'POTVRDI I POŠALJI / CONFIRM & SEND'}
           </Button>
         </div>
       </CardContent>
@@ -431,12 +449,11 @@ export function MobileQCForm({ deliveryId, projectId, onSuccess }: MobileQCFormP
     <div className="max-w-2xl mx-auto p-4 space-y-4">
       {/* Progress indicator */}
       <div className="flex justify-between mb-6">
-        {[1, 2, 3, 4].map((s) => (
+        {[1, 2, 3, 4, 5].map((s) => (
           <div
             key={s}
-            className={`flex-1 h-2 mx-1 rounded ${
-              s <= step ? 'bg-orange-500' : 'bg-gray-300'
-            }`}
+            className={`flex-1 h-2 mx-1 rounded ${s <= step ? 'bg-orange-500' : 'bg-gray-300'
+              }`}
           />
         ))}
       </div>
@@ -445,6 +462,7 @@ export function MobileQCForm({ deliveryId, projectId, onSuccess }: MobileQCFormP
       {step === 2 && renderStep2()}
       {step === 3 && renderStep3()}
       {step === 4 && renderStep4()}
+      {step === 5 && renderStep5()}
     </div>
   );
 }
