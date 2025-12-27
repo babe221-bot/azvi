@@ -9,6 +9,9 @@ import * as db from "./db";
 import { aiAssistantRouter } from "./routers/aiAssistant";
 import { bulkImportRouter } from "./routers/bulkImport";
 import { notificationsRouter } from "./routers/notifications";
+import { hashPassword, verifyPassword } from "./_core/password";
+import { sdk } from "./_core/sdk";
+import { TRPCError } from "@trpc/server";
 
 export const appRouter = router({
   system: systemRouter,
@@ -18,6 +21,71 @@ export const appRouter = router({
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+
+    register: publicProcedure
+      .input(z.object({
+        username: z.string().min(3),
+        password: z.string().min(6),
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const existing = await db.getUserByUsername(input.username);
+        if (existing) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Username already exists",
+          });
+        }
+
+        const passwordHash = hashPassword(input.password);
+        const [result] = await db.createUser({
+          username: input.username,
+          passwordHash,
+          name: input.name || null,
+          email: input.email || null,
+          role: "user",
+        }) as any;
+
+        const userId = result.insertId;
+        const sessionToken = await sdk.createSessionToken(userId);
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+
+        ctx.res.cookie(COOKIE_NAME, sessionToken, cookieOptions);
+
+        return { success: true };
+      }),
+
+    login: publicProcedure
+      .input(z.object({
+        username: z.string(),
+        password: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await db.getUserByUsername(input.username);
+        if (!user || !user.passwordHash) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Invalid username or password",
+          });
+        }
+
+        const isValid = verifyPassword(input.password, user.passwordHash);
+        if (!isValid) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Invalid username or password",
+          });
+        }
+
+        const sessionToken = await sdk.createSessionToken(user.id);
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+
+        ctx.res.cookie(COOKIE_NAME, sessionToken, cookieOptions);
+
+        return { success: true };
+      }),
+
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
